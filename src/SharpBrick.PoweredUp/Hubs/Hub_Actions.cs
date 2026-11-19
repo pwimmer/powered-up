@@ -1,4 +1,5 @@
 using System;
+using System.Reactive;
 using System.Threading.Tasks;
 using SharpBrick.PoweredUp.Protocol;
 using SharpBrick.PoweredUp.Protocol.Messages;
@@ -7,6 +8,8 @@ namespace SharpBrick.PoweredUp;
 
 public abstract partial class Hub
 {
+    public IObservable<Unit> DisconnectedObservable => Protocol.Disconnected;
+
     /// <summary>
     /// Switch Off Hub
     /// </summary>

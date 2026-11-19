@@ -17,9 +17,9 @@ public class PoweredUpHost
     private readonly IPoweredUpBluetoothAdapter _bluetoothAdapter;
     public IServiceProvider ServiceProvider { get; }
     private readonly ILogger<PoweredUpHost> _logger;
-    private readonly ConcurrentBag<(IPoweredUpBluetoothDeviceInfo Info, Hub Hub)> _hubs = new();
+    private readonly ConcurrentDictionary<IPoweredUpBluetoothDeviceInfo, Hub> _hubs = new();
 
-    public IEnumerable<Hub> Hubs => _hubs.Select(i => i.Hub);
+    public IEnumerable<Hub> Hubs => _hubs.Select(i => i.Value);
 
     public PoweredUpHost(IPoweredUpBluetoothAdapter bluetoothAdapter, IServiceProvider serviceProvider, ILogger<PoweredUpHost> logger)
     {
@@ -34,12 +34,12 @@ public class PoweredUpHost
         => Hubs.OfType<THub>().FirstOrDefault();
 
     public THub Find<THub>(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo) where THub : Hub
-        => _hubs.Where(h => h.Info.Equals(bluetoothDeviceInfo)).Select(i => i.Hub).FirstOrDefault() as THub;
+        => _hubs.Where(h => h.Key.Equals(bluetoothDeviceInfo)).Select(i => i.Value).FirstOrDefault() as THub;
 
     public THub FindById<THub>(byte hubId) where THub : Hub, IDisposable
-        => _hubs.Where(h => h.Hub.HubId == hubId).Select(i => i.Hub).FirstOrDefault() as THub;
+        => _hubs.Where(h => h.Value.HubId == hubId).Select(i => i.Value).FirstOrDefault() as THub;
     public THub FindByName<THub>(string name) where THub : Hub, IDisposable
-        => _hubs.Where(h => h.Info.Name == name).Select(i => i.Hub).FirstOrDefault() as THub;
+        => _hubs.Where(h => h.Key.Name == name).Select(i => i.Value).FirstOrDefault() as THub;
 
     public void Discover(Func<Hub, Task> onDiscovery, CancellationToken token = default)
     {
@@ -47,11 +47,15 @@ public class PoweredUpHost
         {
             try
             {
-                if (!_hubs.Any(i => i.Info.Equals(deviceInfo)))
+                if (!_hubs.Any(i => i.Key.Equals(deviceInfo)))
                 {
                     var hub = CreateHubInBluetoothScope(deviceInfo, hubFactory => hubFactory.CreateByBluetoothManufacturerData(deviceInfo.ManufacturerData));
 
-                    _hubs.Add((deviceInfo, hub));
+                    _hubs[deviceInfo] = hub;
+                    hub.DisconnectedObservable.Subscribe(_ =>
+                    {
+                        _hubs.Remove(deviceInfo, out Hub _);
+                    });
 
                     var text = (deviceInfo is IPoweredUpBluetoothDeviceInfoWithMacAddress mac) ? mac.ToIdentificationString() : "not revealed";
 
@@ -103,7 +107,7 @@ public class PoweredUpHost
 
         var hub = CreateHubInBluetoothScope(deviceInfo, hubFactory => hubFactory.Create<THub>());
 
-        _hubs.Add((deviceInfo, hub));
+        _hubs[deviceInfo] = hub;
 
         return hub;
     }

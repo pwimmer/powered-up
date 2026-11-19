@@ -135,7 +135,7 @@ public class BlueGigaBLEPoweredUpBluetoothAdapater : IPoweredUpBluetoothAdapter,
     /// </summary>
     /// <param name="bluetoothDeviceInfo"></param>
     /// <returns></returns>
-    public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo)
+    public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo, Func<Task> onDisconnect)
     {
         var bluetoothAddress = (bluetoothDeviceInfo is PoweredUpBluetoothDeviceInfoWithMacAddress local) ? local.MacAddressAsUInt64 : throw new ArgumentException("DeviceInfo not created by adapter", nameof(bluetoothDeviceInfo));
 
@@ -146,6 +146,11 @@ public class BlueGigaBLEPoweredUpBluetoothAdapater : IPoweredUpBluetoothAdapter,
         var device = new BlueGigaBLEPoweredUpBluetoothDevice(bluetoothAddress, bluetoothAdressBytes, name, this, Logger, TraceDebug, bleDevice)
         {
             IsConnected = bleDevice.IsConnected,
+        };
+        bleDevice.Disconnected += async(sender, e) =>
+        {
+            device.IsConnected = false;
+            await onDisconnect?.Invoke();
         };
         await Devices.AddOrUpdate(device.DeviceAdress, device, (key, oldvalue) => oldvalue = device).LogInfosAsync();
         return await Task.FromResult(Devices[bluetoothAddress]);

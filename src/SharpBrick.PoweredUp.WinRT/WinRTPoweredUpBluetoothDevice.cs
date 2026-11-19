@@ -11,9 +11,16 @@ public class WinRTPoweredUpBluetoothDevice : IPoweredUpBluetoothDevice
     private BluetoothLEDevice _device;
     public string Name => _device.Name;
 
-    public WinRTPoweredUpBluetoothDevice(BluetoothLEDevice device)
+    public WinRTPoweredUpBluetoothDevice(BluetoothLEDevice device, Func<Task> onDisconnect)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
+        _device.ConnectionStatusChanged += async (sender, _) =>
+        {
+            if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
+            {
+                await onDisconnect?.Invoke();
+            }
+        };
     }
 
     ~WinRTPoweredUpBluetoothDevice() => Dispose(false);

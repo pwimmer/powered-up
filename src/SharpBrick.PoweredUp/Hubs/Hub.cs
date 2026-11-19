@@ -21,7 +21,7 @@ public abstract partial class Hub : IDisposable
     public ILegoWirelessProtocol Protocol { get; private set; }
     public byte HubId { get; private set; }
     public IServiceProvider ServiceProvider { get; }
-    public bool IsConnected => Protocol is not null;
+    public bool IsConnected => Protocol?.IsConnected ?? false;
 
     public Hub(ILegoWirelessProtocol protocol, IDeviceFactory deviceFactory, ILogger<Hub> logger, IServiceProvider serviceProvider, SystemType knownSystemType, Port[] knownPorts, IEnumerable<HubProperty> knownProperties = default)
     {

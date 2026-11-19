@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
@@ -17,12 +18,15 @@ public class LegoWirelessProtocol : ILegoWirelessProtocol
     private readonly ILogger<LegoWirelessProtocol> _logger;
     private readonly IDeviceFactory _deviceFactory;
     private readonly Subject<(byte[] data, LegoWirelessMessage message)> _upstreamSubject;
-    
+    private readonly AsyncSubject<Unit> _disconnected = new();
+
     public ProtocolKnowledge Knowledge { get; } = new ProtocolKnowledge();
 
     public IObservable<(byte[] data, LegoWirelessMessage message)> UpstreamRawMessages => _upstreamSubject;
     public IObservable<LegoWirelessMessage> UpstreamMessages => _upstreamSubject.Select(x => x.message);
     public IServiceProvider ServiceProvider { get; }
+    public IObservable<Unit> Disconnected => _disconnected.AsObservable();
+    public bool IsConnected => _kernel.IsConnected;
 
     /// <inheritdoc/>
     public bool DiscoveryMode { get; set; } = false;
@@ -44,7 +48,7 @@ public class LegoWirelessProtocol : ILegoWirelessProtocol
             HubId = 0x00,
         }, Knowledge, _deviceFactory, UseCachedInformation());
 
-        await _kernel.ConnectAsync();
+        await _kernel.ConnectAsync(DisconnectAsync);
         _logger.LogInformation("Connected to device, getting protocol information");
         await _kernel.ReceiveBytesAsync(async data =>
         {
@@ -68,6 +72,9 @@ public class LegoWirelessProtocol : ILegoWirelessProtocol
     public async Task DisconnectAsync()
     {
         await _kernel.DisconnectAsync();
+
+        _disconnected.OnNext(Unit.Default);
+        _disconnected.OnCompleted();
     }
 
     public async Task SendMessageAsync(LegoWirelessMessage message)
@@ -102,6 +109,7 @@ public class LegoWirelessProtocol : ILegoWirelessProtocol
         {
             if (disposing)
             {
+                _disconnected.Dispose();
                 _kernel?.Dispose();
             }
             disposedValue = true;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive;
 using System.Threading.Tasks;
 using SharpBrick.PoweredUp.Protocol.Knowledge;
 using SharpBrick.PoweredUp.Protocol.Messages;
@@ -9,6 +10,8 @@ public interface ILegoWirelessProtocol : IDisposable
 {
     Task ConnectAsync(SystemType initialSystemType = default);
     Task DisconnectAsync();
+    IObservable<Unit> Disconnected { get;  }
+    bool IsConnected { get; }
 
     Task SendMessageAsync(LegoWirelessMessage message);
     IObservable<LegoWirelessMessage> UpstreamMessages { get; }

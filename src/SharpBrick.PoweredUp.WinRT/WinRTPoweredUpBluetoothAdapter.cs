@@ -52,13 +52,13 @@ public class WinRTPoweredUpBluetoothAdapter : IPoweredUpBluetoothAdapter
         }
     }
 
-    public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo)
+    public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo, Func<Task> onDisconnect)
     {
         var bluetoothAddress = (bluetoothDeviceInfo is PoweredUpBluetoothDeviceInfoWithMacAddress local) ? local.MacAddressAsUInt64 : throw new ArgumentException("DeviceInfo not created by adapter", nameof(bluetoothDeviceInfo));
 
         var device = await BluetoothLEDevice.FromBluetoothAddressAsync(bluetoothAddress);
 
-        return new WinRTPoweredUpBluetoothDevice(device);
+        return new WinRTPoweredUpBluetoothDevice(device, onDisconnect);
     }
 
 

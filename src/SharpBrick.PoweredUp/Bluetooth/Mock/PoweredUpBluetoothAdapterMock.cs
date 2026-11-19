@@ -27,7 +27,7 @@ public class PoweredUpBluetoothAdapterMock : IPoweredUpBluetoothAdapter
         throw new NotImplementedException();
     }
 
-    public Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo)
+    public Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo, Func<Task> onDisconnect)
     {
         return Task.FromResult<IPoweredUpBluetoothDevice>(MockDevice);
     }

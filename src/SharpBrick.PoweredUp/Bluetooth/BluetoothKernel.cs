@@ -22,9 +22,9 @@ public class BluetoothKernel : IDisposable
 
     public bool IsConnected => _characteristic is not null;
 
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(Func<Task> onDisconnect)
     {
-        _device = await _bluetoothAdapter.GetDeviceAsync(BluetoothDeviceInfo);
+        _device = await _bluetoothAdapter.GetDeviceAsync(BluetoothDeviceInfo, onDisconnect);
         _service = await _device.GetServiceAsync(new Guid(PoweredUpBluetoothConstants.LegoHubService));
         _characteristic = await _service.GetCharacteristicAsync(new Guid(PoweredUpBluetoothConstants.LegoHubCharacteristic));
 

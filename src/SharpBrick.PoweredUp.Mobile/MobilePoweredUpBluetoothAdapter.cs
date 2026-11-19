@@ -15,11 +15,19 @@ namespace SharpBrick.PoweredUp.Mobile
         private readonly IAdapter _bluetoothAdapter;
         private readonly INativeDeviceInfoProvider _deviceInfoProvider;
         private readonly Dictionary<string, IDevice> _discoveredDevices = new Dictionary<string, IDevice>();
+        private readonly Dictionary<IDevice, Func<Task>> _disconnectHandlers = new Dictionary<IDevice, Func<Task>>();
 
         public MobilePoweredUpBluetoothAdapter(IBluetoothLE bluetooth, INativeDeviceInfoProvider deviceInfoProvider)
         {
             _bluetoothAdapter = bluetooth.Adapter;
             _deviceInfoProvider = deviceInfoProvider;
+            _bluetoothAdapter.DeviceConnectionLost += async (sender, args) =>
+            {
+                if (_disconnectHandlers.TryGetValue(args.Device, out var onDisconnect))
+                {
+                    await onDisconnect?.Invoke();
+                }
+            };
         }
 
         public void Discover(Func<IPoweredUpBluetoothDeviceInfo, Task> discoveryHandler, CancellationToken cancellationToken = default)
@@ -92,7 +100,7 @@ namespace SharpBrick.PoweredUp.Mobile
             return manufacturerData.Data[0] == 0x97 && manufacturerData.Data[1] == 0x03;
         }
 
-        public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo)
+        public async Task<IPoweredUpBluetoothDevice> GetDeviceAsync(IPoweredUpBluetoothDeviceInfo bluetoothDeviceInfo, Func<Task> onDisconnect)
         {
             var deviceId = (bluetoothDeviceInfo is MobileBluetoothDeviceInfo local) ? local.DeviceIdentifier : throw new ArgumentException("DeviceInfo not created by adapter", nameof(bluetoothDeviceInfo));
 
@@ -113,7 +121,11 @@ namespace SharpBrick.PoweredUp.Mobile
                 // 60 seconds will be ignored here, because the cancelation will happen after 10 seconds
                 await Task.Delay(60000, cts.Token).ContinueWith(task => { });
 
-                if (!_discoveredDevices.ContainsKey(deviceId))
+                if (_discoveredDevices.TryGetValue(deviceId, out var device))
+                {
+                    _disconnectHandlers[device] = onDisconnect;
+                }
+                else
                 {
                     throw new NotSupportedException("Given bt address does not belong to a discovered device");
                 }
